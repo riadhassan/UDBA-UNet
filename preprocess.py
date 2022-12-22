@@ -27,8 +27,8 @@ def find_body(regions):
     return  regions[indx]
 
 
-data_root = r"/Users/Segthor/Data/" 
-dest_dir = r"/Users/Segthor/Data/train"
+data_root = r"C:\Medical_Imaging\Segthor\Data" 
+dest_dir = r"C:\Medical_Imaging\Segthor\Data\train"
 files = os.listdir(data_root)
 files = [x for x in files if 'Patient_' in x]
 files.sort()
@@ -61,9 +61,9 @@ for d in files[:34]:
     end = box[indx+3] +20
     new_vol = img_vol[start:end,start:end,box[2]:box[5]]
     #new_vol = img_vol[box[0]:box[3],box[1]:box[4],:]
-    new_vol = new_vol+np.abs(new_vol.min())
-    new_vol = (new_vol/new_vol.max())*255
-    new_vol = new_vol.astype(np.uint8)
+    #new_vol = new_vol+np.abs(new_vol.min())
+    #new_vol = (new_vol/new_vol.max())*255
+    #new_vol = new_vol.astype(np.uint16)
 
     new_mask = gt_vol[start:end,start:end,box[2]:box[5]]
     #new_mask = gt_vol[box[0]:box[3],box[1]:box[4],box[2]:box[5]]
@@ -77,8 +77,8 @@ for d in files[:34]:
     for i in range(new_mask.shape[2]):
         sl = new_mask[:,:,i]
         if sl.max()>0:
-            img_sl = Image.fromarray(new_vol[:,:,i],'L').resize((imsize,imsize),Image.BILINEAR).transpose(Image.TRANSPOSE)
-            img_sl.save(os.path.join(r"/Users/Segthor/RGB",f"{patient}_S_{i}.jpg"))
+            img_sl = Image.fromarray(new_vol[:,:,i]).resize((imsize,imsize),Image.BILINEAR).transpose(Image.TRANSPOSE)
+            #img_sl.save(os.path.join(r"C:\Medical_Imaging\Segthor\Data\RGB",f"{patient}_S_{i}.tiff"))
             mask_sl = np.asarray(Image.fromarray(new_mask[:,:,i]).resize((imsize,imsize),Image.NEAREST).transpose(Image.TRANSPOSE))
             if flag:
                 sio.savemat(os.path.join(dest_dir,f"{patient}_S_{i}.mat"),{'img':np.asarray(img_sl),'mask':mask_sl,\
