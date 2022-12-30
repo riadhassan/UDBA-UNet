@@ -48,7 +48,7 @@ class OrganSegmentationDataset(Dataset):
         patient = f"Patient_{id}"
         slices.sort(key=lambda x: int(x.split('.')[0].split('_')[-1]))
         self.val_patients[patient] = slices
-
+      '''
       filesPath = (filesPath)
       for filePath in sorted(filesPath):
         patient_id = int(filePath.split("/")[-1].split("_")[1])
@@ -57,15 +57,16 @@ class OrganSegmentationDataset(Dataset):
             self.patient_ids.append(patient_id)
           self.data_paths.append(filePath)
           self.data_paths = sorted(self.data_paths)
+      '''
     print(self.patient_ids)
   
   def normalize_data(self,data):
-    data[data< 20]=20
-    data[data>175]= 175 #1524
+    data[data< -150]=-150
+    data[data>200]= 200 #1524
     
-    data=data-20
+    data=data +150
     
-    data=data*2./175 - 1 #1500 - 1
+    data=(data*2.)/200 - 1 #1500 - 1
     return  (data)
   
   def __len__(self):
@@ -91,8 +92,8 @@ class OrganSegmentationDataset(Dataset):
       trans_threshold=.6, horizontal_flip=None,rotation_range=30, 
       height_shift_range=0.05, width_shift_range=0.05,
       shear_range=None,zoom_range=(0.95,1.05), elastic=None,add_noise=0.0)
-      #image = self.normalize_data(image)
-      image = (image - np.std(image))/np.mean(image)
+      image = self.normalize_data(image)
+      #image = (image - np.std(image))/np.mean(image)
       image_tensor = torch.from_numpy(image.astype(np.float32))
       mask_tensor = torch.from_numpy(mask.astype(int))
       return image_tensor, mask_tensor, patient_id, slice_id

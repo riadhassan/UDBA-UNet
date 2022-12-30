@@ -11,13 +11,13 @@ class UNet(nn.Module):
         features = init_features
         #self.encoder0 = UNet._block(in_channels, features, name="enc1",stride=1)
         self.encoder1 = UNet._block(in_channels, features*1, name="enc1",stride=1)
-        #self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder2 = UNet._block(features, features * 2, name="enc2",stride=2)
-        #self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder3 = UNet._block(features * 2, features * 4, name="enc3",stride=2)
-        #self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder4 = UNet._block(features * 4, features * 8, name="enc4",stride=2)
-        #self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet._block(features, features * 2, name="enc2",stride=1)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet._block(features * 2, features * 4, name="enc3",stride=1)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder4 = UNet._block(features * 4, features * 8, name="enc4",stride=1)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
         
         self.bottleneck = UNet._block(features * 8, features * 16, name="bottleneck",stride=2)
 
@@ -47,10 +47,10 @@ class UNet(nn.Module):
 
     def forward(self, x):
         #enc0 = self.encoder0(x)
-        enc1 = self.encoder1(x)
-        enc2 = self.encoder2(enc1)
-        enc3 = self.encoder3(enc2)
-        enc4 = self.encoder4(enc3)
+        enc1 = self.encoder1(self.pool1(x))
+        enc2 = self.encoder2(self.pool2(enc1))
+        enc3 = self.encoder3(self.pool3(enc2))
+        enc4 = self.encoder4(self.pool4(enc3))
         
         bottleneck = self.bottleneck(enc4)
         
@@ -66,7 +66,7 @@ class UNet(nn.Module):
         dec1 = self.upconv1(dec2)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
-        #dec1 = self.upconv0(dec1)
+        dec1 = self.upconv0(dec1)
 
         output = self.conv(dec1)
         return output

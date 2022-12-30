@@ -15,7 +15,11 @@ class Loss():
                            
                            "Wreg":WassersteinCT(self.conf.output_channels,self.conf.imsize,
                            device=self.conf.device),
-                           "CrossEntropy":nn.CrossEntropyLoss()}
+                           "CrossEntropy":nn.CrossEntropyLoss(),
+                           "Wreg_mat":WassersteinCT_mat(self.conf.output_channels,self.conf.imsize,
+                           device=self.conf.device),
+                           "Distill": Distill(self.conf.device)
+                           }
                            #"IoU":JaccardIndex(num_classes=self.conf.output_channels)}
     
     def setup_input(self,data):
@@ -43,12 +47,26 @@ class Loss():
             loss = loss_fn1(self.conf.pred,self.conf.gt) 
             + loss_fn2(self.conf.pred,self.conf.gt,self.conf.input)
             return loss
+        elif self.conf.loss == "Wreg_mat":
+            loss_fn1 = self.loss_pool["Dice"]
+            loss_fn1.to(self.conf.device)
+            loss_fn2 = self.loss_pool["Wreg_mat"]
+            loss_fn2.to(self.conf.device)
+            loss = loss_fn1(self.conf.pred,self.conf.gt) 
+            + loss_fn2(self.conf.pred,self.conf.gt,self.conf.input)
+            return loss
         elif self.conf.loss == "CrossEntropy":
             loss_fn = self.loss_pool["CrossEntropy"]
             loss_fn.to(self.conf.device)
             loss = loss_fn(self.conf.pred, torch.squeeze(self.conf.gt,dim=1))
             return loss
-
+        '''    
+        elif self.conf.isuncertainty and isinstance(self.conf.loss,str):
+            loss_fn = self.loss_pool["Distill"]
+            loss_fn.to(self.conf.device)
+            loss = loss_fn(self.conf.pred, torch.squeeze(self.conf.gt,dim=1))
+            return loss
+        '''
 
 class DiceVal(nn.Module):
 
@@ -68,7 +86,7 @@ class One_Hot(nn.Module):
     def __init__(self, depth):
         super(One_Hot, self).__init__()
         self.depth = depth
-        self.ones = torch.eye(depth).cuda()
+        self.ones = torch.eye(depth)
 
     def forward(self, X_in):
         n_dim = X_in.dim()
@@ -159,5 +177,54 @@ class WassersteinCT(nn.Module):
         seg_mask = seg_mask.to(self.device)
         ct_tile = torch.tile(ct,(1,5,1,1))
         loss = torch.mean(torch.abs(organ_mask*ct_tile - seg_mask*ct_tile))
+        return loss
+
+class WassersteinCT_mat(nn.Module):
+    def __init__(self,num_organ,imsize,device):
+        super(WassersteinCT_mat, self).__init__()
+        self.num_organ = num_organ
+        self.imsize = imsize
+        self.device = device
+     
+    def forward(self, pred_stage1, target,ct):
+        pred_stage1 = torch.argmax(pred_stage1, dim=1)
+        pred_stage1 = pred_stage1[None,:,:,:]
+        organ_mask = torch.zeros((target.size(0),self.num_organ, self.imsize, self.imsize))
+        seg_mask = torch.zeros((target.size(0),self.num_organ, self.imsize, self.imsize))
+        
+        for label in range(0,self.num_organ):
+            temp_target = torch.zeros(target.size())
+            temp_target[target == label] = 1
+            organ_mask[:,label, :, :] = torch.squeeze(temp_target)
+            temp_seg = torch.zeros(target.size())
+            temp_seg[pred_stage1==label] =1
+            seg_mask[:,label,:,:] = torch.squeeze(temp_seg)
+            
+        # inter class texture difference matrix
+        matrix = torch.zeros((self.num_organ,self.num_organ))
+        matrix = matrix.to(self.device)
+        organ_mask = organ_mask.to(self.device)
+        seg_mask = seg_mask.to(self.device)
+
+        for c in range(0,self.num_organ):
+            for l in range(0,self.num_organ):
+                matrix[c,l] = torch.mean(torch.abs(organ_mask[:,l,:,:]*ct - seg_mask[:,c,:,:]*ct))
+        
+        return torch.mean(matrix)
+
+class Distill(nn.Module):
+    def __init__(self,device, temperature = 1):
+        super(Distill, self).__init__()
+        self.device = device
+        self.ce_fn = nn.MSELoss()
+        self.softmax = nn.Softmax()
+        self.T = temperature
+
+    def forward(self,scores, targets,gt):
+        soft_pred = self.softmax(scores / self.T)
+        soft_targets = self.softmax(targets / self.T)
+        #scores = torch.argmax(scores,dim=1)
+        #scores = scores[None,:,:,:]
+        loss = self.ce_fn(soft_pred, soft_targets) #+ 0.5* self.ce_fn(scores,gt)
         return loss
         

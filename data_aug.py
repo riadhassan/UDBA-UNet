@@ -3,6 +3,7 @@ import numpy as np
 #from matplotlib import pyplot as plt
 #from scipy.io import loadmat
 #from skimage import io
+import tensorflow as tf
 import keras
 from keras_preprocessing.image import transform_matrix_offset_center,Iterator,random_channel_shift,flip_axis
 from keras.preprocessing.image import ImageDataGenerator
