@@ -12,6 +12,7 @@ class ModelWraper:
         self.seg_model = UNet(in_channels= conf.input_channels,out_channels= conf.output_channels)
         self.seg_model.to(self.device)
         self.conf=conf
+        self.weights = None
         if conf.isuncertainty:
             self.a_model = auxnet(conf=conf)
             self.a_model = self.a_model.to(device=self.device)
@@ -36,20 +37,30 @@ class ModelWraper:
                 self.a_model.eval()
     
     def get_uncertainty_weights(self):
-        union = torch.zeros((1, self.conf.output_channels, self.conf.imsize, self.conf.imsize))
-        ints = torch.zeros((1, self.conf.output_channels, self.conf.imsize, self.conf.imsize))
-        
-        for i in range(self.conf.output_channels):
-            union[:,i,:,:] = self.conf.pred[:,i,:,:].logical_and(self.conf.a_pred[:,i,:,:])
-            ints[:,i,:,:] = self.conf.pred[:,i,:,:].logical_or(self.conf.a_pred[:,i,:,:])
-        subs = union - ints
-        return subs
+        subs = torch.zeros((self.conf.imsize, self.conf.imsize))
+        #ints = torch.zeros((1, self.conf.output_channels, self.conf.imsize, self.conf.imsize))
+        pred = torch.squeeze(torch.argmax(self.conf.pred,dim=1))
+        pred_a = torch.squeeze(torch.argmax(self.conf.pred_a,dim=1))
+        for i in range(1,self.conf.output_channels):
+            mask_pred = pred *0
+            mask_pred_a = pred_a*0
+            mask_pred[pred==i] = 1
+            mask_pred_a[pred_a==i] =1
+            mask_union = torch.bitwise_or(mask_pred,mask_pred_a)
+            mask_inter = torch.bitwise_and(mask_pred,mask_pred_a)
+            mask_sub = mask_union - mask_inter
+            subs[mask_sub==1] = i
+        return subs[None,None,:,:]
 
     def update_models(self, input,iter):
         self.conf.iter = iter
         self.conf = self.loss_function.setup_input(input)
         self.optimizer1.zero_grad()
-        self.conf.pred = self.seg_model(self.conf.input)
+        if self.weights is None:
+            self.conf.pred = self.seg_model(self.conf.input)
+        else:
+            self.conf.pred = self.seg_model(self.conf.input,self.weights)
+        
         pred = self.conf.pred
         main_loss = self.loss_function(self.conf)  
         main_loss.backward(retain_graph=True)
@@ -62,12 +73,16 @@ class ModelWraper:
             dist_loss = self.distill_loss(self.conf.pred_a,pred.detach(),self.conf.gt)
             dist_loss.backward()
             self.optimizer2.step()
+            
             self.visualize(self.conf.pred_a,'aux')
-            #weights = self.get_uncertainty_weights()
+            self.weights = self.get_uncertainty_weights()   
+            #self.visualize(self.weights[None,:,:],'subs')
         return main_loss,dist_loss
     
     def visualize(self, out, model_type):
-        out = torch.argmax(out,dim=1).cpu()
+        if model_type !='subs':
+            out = torch.argmax(out,dim=1).cpu()
+        
         class_to_color = [torch.tensor([0, 0, 0]),torch.tensor([10, 133, 1]), torch.tensor([14, 1, 133]),  torch.tensor([33, 255, 1]), torch.tensor([243, 5, 247])]
         output = torch.zeros(1, 3, out.size(-2), out.size(-1), dtype=torch.float)
         for class_idx, color in enumerate(class_to_color):

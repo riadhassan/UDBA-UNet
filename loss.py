@@ -217,7 +217,7 @@ class Distill(nn.Module):
         super(Distill, self).__init__()
         self.device = device
         self.ce_fn = nn.MSELoss()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax2d()
         self.T = temperature
 
     def forward(self,scores, targets,gt):

@@ -11,10 +11,31 @@ from segmentation.utils.logger import setup_logger
 from segmentation.model import build_segmentation_model_from_cfg
 from segmentation.utils.utils import get_module
 import pickle
-
+from resnet_settings import parse_opts 
+from resnet_model import generate_model
 class auxnet(nn.Module):
     def __init__(self,conf):
         super(auxnet, self).__init__()
+        sets = parse_opts()
+        sets.target_type = "normal"
+        sets.phase = 'test'
+        checkpoint = torch.load(sets.pretrain_path,map_location=torch.device('mps'))
+        self.model = generate_model(sets)
+        self.model.load_state_dict(checkpoint['state_dict'],strict=False)
+       
+        self.input = nn.Conv2d(1,256,kernel_size=5,stride=1,padding=2)
+        self.output = nn.Conv2d(19,conf.output_channels,kernel_size=1,stride=1)
+    
+    def forward(self,input):
+         x = self.input(input)
+         x = self.model(x)
+         x = self.output(x)
+         return x
+'''         
+class auxnet(nn.Module):
+    def __init__(self,conf):
+        super(auxnet, self).__init__()
+        
         if conf.aux_file == "res_50":
             aux_file_loc = os.path.join(os.getcwd(),'configs','panoptic_deeplab_R50_os32_cityscapes.yaml')
             update_config(config,aux_file_loc)
@@ -23,7 +44,7 @@ class auxnet(nn.Module):
             update_config(config,aux_file_loc)
 
         self.model = build_segmentation_model_from_cfg(config)
-        self.path = os.path.join(os.getcwd(),'segmentation','panoptic_weights','model_final_coco.pkl')
+        self.path = os.path.join('/Users/Segthor/panoptic_weights','model_final_coco.pkl')
 
         with open(self.path, 'rb') as f:
             obj = f.read()
@@ -44,5 +65,7 @@ class auxnet(nn.Module):
          x = self.model(x)
          x = self.output(x)
          return x
+'''
+
 
 

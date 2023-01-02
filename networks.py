@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
+from BAM import BAM
 
 class UNet(nn.Module):
 
@@ -40,12 +41,16 @@ class UNet(nn.Module):
         self.upconv0 = nn.ConvTranspose2d(
             features, features, kernel_size=2, stride=2
         )
-
+        
         self.conv = nn.Conv2d(
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
 
-    def forward(self, x):
+        #### Uncertainty modules ###
+        self.attenion = U_Attention(features * 16) 
+        
+
+    def forward(self, x,weights=None):
         #enc0 = self.encoder0(x)
         enc1 = self.encoder1(self.pool1(x))
         enc2 = self.encoder2(self.pool2(enc1))
@@ -53,6 +58,8 @@ class UNet(nn.Module):
         enc4 = self.encoder4(self.pool4(enc3))
         
         bottleneck = self.bottleneck(enc4)
+        if isinstance(weights,torch.Tensor):
+            bottleneck = self.attenion(weights,bottleneck)
         
         dec4 = self.upconv4(bottleneck)
         dec4 = torch.cat((dec4, enc4), dim=1)
@@ -104,3 +111,33 @@ class UNet(nn.Module):
                 ]
             )
         )
+
+class U_Attention(nn.Module):
+    def __init__(self,bottleneck_dim,reduction_ratio=16,dilation_num=2,dilation_val=4):
+        super(U_Attention,self).__init__()
+        self.attention = nn.Sequential()
+        self.features = bottleneck_dim
+        self.shape = (1,bottleneck_dim,256,256)
+        self.attention.add_module("attSoftmax",nn.Softmax2d())
+        self.attention.add_module("attDown",nn.Conv2d(self.features,self.features,kernel_size=2,stride=32))
+        '''
+        self.attention.add_module("attConv1",nn.Conv2d(in_channels=1,out_channels=self.features,kernel_size=1))
+        self.attention.add_module( 'attBN',	nn.BatchNorm2d(self.features//reduction_ratio) )
+        self.attention.add_module( 'attRL',nn.ReLU() )
+        self.attention.add_module("attConv3_di",nn.Conv2d(in_channels=self.features,
+        out_channels=self.features, kernel_size=3,dilation=dilation_val))
+        '''
+        self.attention.add_module("Spatial_BAM",BAM(self.features))
+    
+    def forward(self,weights,bottleneck):
+        weight_list = []
+        for i in range(self.features):
+            weight_list.append(weights)
+        weights = torch.stack(weight_list,dim=1)
+        weights = torch.reshape(weights,self.shape)
+        weights = weights.to("mps")
+        attention = self.attention(weights)
+        new_bottleneck = attention * bottleneck
+        return new_bottleneck
+
+
