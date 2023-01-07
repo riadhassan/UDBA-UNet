@@ -27,38 +27,44 @@ class Loss():
         self.conf.input, self.conf.gt = x.to(self.conf.device), y_true.to(self.conf.device)
         return self.conf
         
-    def __call__(self,conf):
+    def __call__(self,conf,isAux):
         self.conf = conf
+        if isAux:
+            pred = self.conf.pred_a
+        else:
+            pred = self.conf.pred
+        gt = self.conf.gt
+
         if self.conf.loss == "Dice":
             loss_fn = self.loss_pool["Dice"]
             loss_fn.to(self.conf.device)
-            loss = loss_fn(self.conf.pred,self.conf.gt)
+            loss = loss_fn(pred,gt)
             return loss
         elif self.conf.loss == "SoftDice":
             loss_fn = self.loss_pool["Dice"]
             loss_fn.to(self.conf.device)
-            loss = loss_fn(self.conf.pred,self.conf.gt)
+            loss = loss_fn(pred,gt)
             return loss
         elif self.conf.loss == "Wreg":
             loss_fn1 = self.loss_pool["Dice"]
             loss_fn1.to(self.conf.device)
             loss_fn2 = self.loss_pool["Wreg"]
             loss_fn2.to(self.conf.device)
-            loss = loss_fn1(self.conf.pred,self.conf.gt) 
-            + loss_fn2(self.conf.pred,self.conf.gt,self.conf.input)
+            loss = loss_fn1(pred,gt) 
+            + loss_fn2(pred,gt,self.conf.input)
             return loss
         elif self.conf.loss == "Wreg_mat":
             loss_fn1 = self.loss_pool["Dice"]
             loss_fn1.to(self.conf.device)
             loss_fn2 = self.loss_pool["Wreg_mat"]
             loss_fn2.to(self.conf.device)
-            loss = loss_fn1(self.conf.pred,self.conf.gt) 
-            + loss_fn2(self.conf.pred,self.conf.gt,self.conf.input)
+            loss = loss_fn1(pred,gt) 
+            + loss_fn2(pred,gt,self.conf.input)
             return loss
         elif self.conf.loss == "CrossEntropy":
             loss_fn = self.loss_pool["CrossEntropy"]
             loss_fn.to(self.conf.device)
-            loss = loss_fn(self.conf.pred, torch.squeeze(self.conf.gt,dim=1))
+            loss = loss_fn(pred, torch.squeeze(gt,dim=1))
             return loss
         '''    
         elif self.conf.isuncertainty and isinstance(self.conf.loss,str):
@@ -220,11 +226,9 @@ class Distill(nn.Module):
         self.softmax = nn.Softmax2d()
         self.T = temperature
 
-    def forward(self,scores, targets,gt):
+    def forward(self,scores, targets):
         soft_pred = self.softmax(scores / self.T)
         soft_targets = self.softmax(targets / self.T)
-        #scores = torch.argmax(scores,dim=1)
-        #scores = scores[None,:,:,:]
-        loss = self.ce_fn(soft_pred, soft_targets) #+ 0.5* self.ce_fn(scores,gt)
+        loss = self.ce_fn(soft_pred, soft_targets)
         return loss
         

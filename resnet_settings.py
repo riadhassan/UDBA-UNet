@@ -19,7 +19,7 @@ def parse_opts():
         help='Path for image list file')
     parser.add_argument(
         '--n_seg_classes',
-        default=2,
+        default=5,
         type=int,
         help="Number of segmentation classes"
     )

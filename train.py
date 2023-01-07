@@ -41,7 +41,7 @@ def conf():
     args.add_argument("--data_root",type=str,default="/Users/Segthor/Data")
     args.add_argument("--input_channels",type=int,default=1)
     args.add_argument("--output_channels",type=int,default=5)
-    args.add_argument("--lr",type=float,default=0.001)
+    args.add_argument("--lr",type=float,default=0.01)
     args.add_argument("--batch_size",type=int,default=1)
     args.add_argument("--save_dir",type=str,default="/Users/Segthor/training_logs")
     args.add_argument("--model_name",type=str,default="Test")
@@ -132,7 +132,8 @@ def main(conf):
       print("Training...")
       #### Training Loop ###
       wraper.set_mood(True)
-      
+      conf.curr_epoch = epoch
+
       for i, data in enumerate(train_loader):
         
         loss1,loss2 = wraper.update_models(data, i)

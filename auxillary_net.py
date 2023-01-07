@@ -16,6 +16,7 @@ from resnet_model import generate_model
 class auxnet(nn.Module):
     def __init__(self,conf):
         super(auxnet, self).__init__()
+        self.conf=conf
         sets = parse_opts()
         sets.target_type = "normal"
         sets.phase = 'test'
@@ -23,14 +24,19 @@ class auxnet(nn.Module):
         self.model = generate_model(sets)
         self.model.load_state_dict(checkpoint['state_dict'],strict=False)
        
-        self.input = nn.Conv2d(1,256,kernel_size=5,stride=1,padding=2)
-        self.output = nn.Conv2d(19,conf.output_channels,kernel_size=1,stride=1)
+        #self.input = nn.Conv3d(3,256,kernel_size=5,stride=1,padding=2)
+        #self.output = nn.ConvTranspose3d(conf.output_channels,conf.output_channels,
+        #kernel_size=(1,2,2),stride=(1,4,4),dilation=(1,4,4))
+        #nn.functional.interpolate(size=(1,conf.output_channels,2,256,256),mode='bilinear')
     
     def forward(self,input):
-         x = self.input(input)
+         #x = self.input(input)
+         x = torch.stack([input for i in range(5)],dim=1)
+         x = torch.reshape(x,(1,1,5,256,256))
          x = self.model(x)
-         x = self.output(x)
-         return x
+         y =  nn.functional.interpolate(input=x[0],size=(256,256),mode='nearest-exact')
+         y = y[:,0,:,:]
+         return y[None,:,:,:]
 '''         
 class auxnet(nn.Module):
     def __init__(self,conf):
