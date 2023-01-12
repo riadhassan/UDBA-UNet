@@ -6,10 +6,10 @@ import torch.nn.functional as F
 from collections import OrderedDict
 #import _init_paths
 from fvcore.common.file_io import PathManager
-from segmentation.config import config, update_config
-from segmentation.utils.logger import setup_logger
-from segmentation.model import build_segmentation_model_from_cfg
-from segmentation.utils.utils import get_module
+#from segmentation.config import config, update_config
+#from segmentation.utils.logger import setup_logger
+#from segmentation.model import build_segmentation_model_from_cfg
+#from segmentation.utils.utils import get_module
 import pickle
 from resnet_settings import parse_opts 
 from resnet_model import generate_model

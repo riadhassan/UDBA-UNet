@@ -74,7 +74,7 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         self.encoder = Encoder(in_channels,features=features)
         self.main_decoder = Decoder(out_channels,"main")
-        #self.drop_decoder = Decoder(out_channels,"Drop")
+        self.drop_decoder = Decoder(out_channels,"Noise")
         #### Uncertainty modules ###
         self.attenion = U_Attention(features[0] * 16) 
         
@@ -86,9 +86,9 @@ class UNet(nn.Module):
             self.enc = self.attenion(weights,self.enc)
     
         seg = self.main_decoder(self.enc,self.skips)
-        #aux_seg = self.drop_decoder(enc,skips)
+        aux_seg = self.drop_decoder(self.enc,self.skips)
         
-        return seg
+        return seg, aux_seg
     
 class FeatureDrop(nn.Module):
     def __init__(self):
