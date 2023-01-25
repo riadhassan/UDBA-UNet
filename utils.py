@@ -21,7 +21,7 @@ def tensor2im(input_image, imtype=np.uint8):
         image_numpy = input_image
     return image_numpy.astype(imtype)
 
-def visualize(self, out, model_type):
+def visualize(out, model_type,path,iter):
         if model_type !='subs':
             out = torch.argmax(out,dim=1).cpu()
         
@@ -35,5 +35,5 @@ def visualize(self, out, model_type):
             segment = mask*curr_color # should have shape 1, 3, 100, 100
             output += segment
         output = tensor2im(output)
-        Image.fromarray(output).save(f"{self.conf.debug_path}/pred_{model_type}_{self.conf.iter}.png")
+        Image.fromarray(output).save(f"{path}/pred_{model_type}_{iter}.png")
         #torchvision.utils.save_image(output, f"{self.conf.debug_path}/pred_{model_type}_{self.conf.iter}.png")
