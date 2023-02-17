@@ -38,25 +38,26 @@ def get_prev_traning_data():
 
 def conf():
     args = argparse.ArgumentParser()
-    args.add_argument("--data_root",type=str,default="/Users/Segthor/Data")
+    args.add_argument("--data_root",type=str,default="/home/nazib/Medical/Data")
     args.add_argument("--input_channels",type=int,default=1)
     args.add_argument("--output_channels",type=int,default=5)
     args.add_argument("--lr",type=float,default=0.01)
     args.add_argument("--batch_size",type=int,default=1)
-    args.add_argument("--save_dir",type=str,default="/Users/Segthor/training_logs")
-    args.add_argument("--model_name",type=str,default="Test")
+    args.add_argument("--save_dir",type=str,default="/home/nazib/Medical/train_logs")
+    args.add_argument("--model_name",type=str,default="Pure_Wreg_mat")
     args.add_argument("--printfq",type=int,default=10)
     args.add_argument("--writerfq",type=int,default=10)
     args.add_argument("--model_save_fq",type=bool,default=True)
     args.add_argument("--debug_type",type=str,default="nifti",help="Two options: 1) nifti. 2)jpg")
-    args.add_argument("--num_epoch",type=int,default=100)
+    args.add_argument("--num_epoch",type=int,default=200)
     args.add_argument("--done_epoch",type=int,default=0)
-    args.add_argument("--device",type=str,default="mps")
+    args.add_argument("--device",type=str,default="cuda")
     args.add_argument("--loss",type=str,default="Dice")
     args.add_argument("--imsize",type=int,default=256)
-    args.add_argument("--isuncertainty",type=bool,default=True)
+    args.add_argument("--isprob",type=str,default='yes',help="Will calculate uncertainty")
     args.add_argument("--aux_file",type=str,default="res_50")
     args = args.parse_args()
+    
     return args
   
 def create_dirs(conf):

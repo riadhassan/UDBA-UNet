@@ -18,7 +18,9 @@ class Loss():
                            "CrossEntropy":nn.CrossEntropyLoss(),
                            "Wreg_mat":WassersteinCT_mat(self.conf.output_channels,self.conf.imsize,
                            device=self.conf.device),
-                           "Distill": Distill(self.conf.device)
+                           "Distill": Distill(self.conf.device),
+                           "DiceCT":DiceCT(num_organ=conf.output_channels-1,
+                               imsize=self.conf.imsize,device=self.conf.device)
                            }
                            #"IoU":JaccardIndex(num_classes=self.conf.output_channels)}
     
@@ -65,6 +67,11 @@ class Loss():
             loss_fn = self.loss_pool["CrossEntropy"]
             loss_fn.to(self.conf.device)
             loss = loss_fn(pred, torch.squeeze(gt,dim=1))
+            return loss
+        elif self.conf.loss == "DiceCT":
+            loss_fn = self.loss_pool["DiceCT"]
+            loss_fn.to(self.conf.device)
+            loss = loss_fn(pred,gt,self.conf.input)
             return loss
         '''    
         elif self.conf.isuncertainty and isinstance(self.conf.loss,str):
@@ -223,12 +230,40 @@ class Distill(nn.Module):
         super(Distill, self).__init__()
         self.device = device
         self.ce_fn = nn.MSELoss()
-        self.softmax = nn.Softmax2d()
         self.T = temperature
 
     def forward(self,scores, targets):
-        soft_pred = self.softmax(scores / self.T)
-        soft_targets = self.softmax(targets / self.T)
-        loss = self.ce_fn(soft_pred, soft_targets)
+        soft_pred = nn.functional.softmax(scores,1)
+        soft_targets = nn.functional.softmax(targets,1)
+        loss = nn.functional.mse_loss(soft_pred, soft_targets,reduction='mean')
         return loss
+
+class DiceCT(nn.Module):
+    def __init__(self,num_organ,imsize,device):
+        super(DiceCT, self).__init__()
+        self.num_organ=num_organ
+        self.imsize = imsize
+        self.device = device
+
+    def forward(self, pred_stage1, target,ct):
+        pred_stage1 = F.softmax(pred_stage1, dim=1)
         
+        organ_target = torch.zeros((target.size(0), self.num_organ, self.imsize, self.imsize))
+        for organ_index in range(1, self.num_organ+1):
+            temp_target = torch.zeros(target.size())
+            temp_target[target == organ_index] = 1
+            organ_target[:, organ_index-1, :, :] = torch.squeeze(temp_target)
+        # loss
+        dice_stage1 = 0.0
+        ct_weights = 0.0
+        organ_target = organ_target.to(self.device)
+        for organ_index in range(1, self.num_organ+1):
+            dice_stage1 += 2 * (pred_stage1[:, organ_index, :, :] * organ_target[:, organ_index-1 , :, :]).sum(dim=1).sum(
+                dim=1) / (pred_stage1[:, organ_index, :, :].pow(2).sum(dim=1).sum(dim=1) +
+                          organ_target[:, organ_index-1, :, :].pow(2).sum(dim=1).sum(dim=1) + 1e-5)
+            ct_weights += torch.mean(torch.abs(pred_stage1[:, organ_index, :, :] *ct - 
+            organ_target[:, organ_index-1 , :, :]*ct))
+
+        dice_stage1 = (dice_stage1*ct_weights) / self.num_organ
+        dice = dice_stage1.mean() 
+        return (1.0-dice) #(1 - dice).mean()

@@ -39,7 +39,7 @@ def multiResBlock(in_channels, features, name,kernel=1,stride=1):
         )
     )
 
-def decblock(in_channels, features, name,stride=1):
+def decblock(in_channels, features, name,stride=1,pool_k=2,pool_stride=2):
     return nn.Sequential(
         OrderedDict(
             [
@@ -68,12 +68,12 @@ def decblock(in_channels, features, name,stride=1):
                 ),
                 (name + "norm1", nn.BatchNorm2d(num_features=features)),
                 (name + "relu1", nn.ReLU(inplace=True)),
-                (name + "TConv", nn.ConvTranspose2d(features, features, kernel_size=2, stride=2))
+                (name + "TConv", nn.ConvTranspose2d(features, features, kernel_size=pool_k, stride=pool_stride))
             ]
         )
     )
 
-def enblock(in_channels, features, name,stride=1):
+def enblock(in_channels, features, name,stride=1,pool_k=2,pool_stride=2):
     return nn.Sequential(
         OrderedDict(
             [
@@ -102,7 +102,7 @@ def enblock(in_channels, features, name,stride=1):
                 ),
                 (name + "norm1", nn.BatchNorm2d(num_features=features)),
                 (name + "relu1", nn.ReLU(inplace=True)),
-                (name+ "pool",nn.MaxPool2d(kernel_size=2, stride=2))
+                (name+ "pool",nn.MaxPool2d(kernel_size=pool_k, stride=pool_stride))
             ]
         )
     )

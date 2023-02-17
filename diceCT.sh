@@ -13,4 +13,4 @@ export CUDA_VISIBLE_DEVICES=0
 source /home/nazib/miniconda3/etc/profile.d/conda.sh
 conda activate medical
 cd ~/Medical/MIDL_code
-python train.py --model_name Wreg_attn_raw --loss Wreg --isprob yes
+python train.py --model_name DiceCT --loss DiceCT --isprob no

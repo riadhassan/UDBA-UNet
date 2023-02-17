@@ -18,7 +18,8 @@ class Encoder(nn.Module):
             else:
                 self.layers.append(enblock(in_channels=features[i-1],features=features[i],name=f"layer-{i}",stride=1))
         
-        self.layers.append(enblock(in_channels=features[-1],features=features[-1]*2, name="bottleneck",stride=1))
+        self.layers.append(enblock(in_channels=features[-1],features=features[-1]*2, name="bottleneck",stride=1,
+        pool_k=2,pool_stride=2))
         #self.res_block_1 = multiResBlock(in_channels=features[-1],features=features[-1]*2,kernel=1)
         self.layers = nn.Sequential(*self.layers)
     
@@ -40,7 +41,8 @@ class Decoder(nn.Module):
         if self.type == "Noise":
             self.feature_noise = FeatureNoise()
         
-        self.layers.append(decblock(self.features[0]*2,self.features[0],name=f"bottleneck",stride=1))
+        self.layers.append(decblock(self.features[0]*2,self.features[0],name=f"bottleneck",stride=1,
+        pool_k=2,pool_stride=2))
         
         for i,f in enumerate(features):
             self.layers.append(decblock(self.features[i]*2,self.features[i]//2,name=f"layer-{i}",stride=1))
@@ -73,22 +75,22 @@ class UNet(nn.Module):
     def __init__(self, in_channels=1, out_channels=5,features=[64,128,256,512]):
         super(UNet, self).__init__()
         self.encoder = Encoder(in_channels,features=features)
-        self.main_decoder = Decoder(out_channels,"main")
-        self.drop_decoder = Decoder(out_channels,"Noise")
-        #### Uncertainty modules ###
-        self.attenion = U_Attention(features[0] * 16) 
+        features.reverse()
+        self.main_decoder = Decoder(out_channels,"main",features=features)
+        self.drop_decoder = Decoder(out_channels,"Noise",features=features)
+            #### Uncertainty modules ###
+        features.reverse()
+        self.attenion = U_Attention(bottleneck_dim=features[0] * 16) 
         
     def forward(self, x,weights=None):
         #enc0 = self.encoder0(x)
         self.enc,self.skips = self.encoder(x)
-        
         if isinstance(weights,torch.Tensor):
             self.enc = self.attenion(weights,self.enc)
-    
-        seg = self.main_decoder(self.enc,self.skips)
         aux_seg = self.drop_decoder(self.enc,self.skips)
-        
+        seg = self.main_decoder(self.enc,self.skips)
         return seg, aux_seg
+        
     
 class FeatureDrop(nn.Module):
     def __init__(self):
@@ -130,27 +132,23 @@ class U_Attention(nn.Module):
         super(U_Attention,self).__init__()
         self.attention = nn.Sequential()
         self.features = bottleneck_dim
-        self.shape = (1,bottleneck_dim,256,256)
+        self.shape = (1,bottleneck_dim,8,8)
+        self.downsample =nn.Upsample(size=(8,8),mode='bilinear')
         self.attention.add_module("attSoftmax",nn.Softmax2d())
-        self.attention.add_module("attDown",nn.Conv2d(self.features,self.features,kernel_size=2,stride=32))
-        '''
-        self.attention.add_module("attConv1",nn.Conv2d(in_channels=1,out_channels=self.features,kernel_size=1))
-        self.attention.add_module( 'attBN',	nn.BatchNorm2d(self.features//reduction_ratio) )
-        self.attention.add_module( 'attRL',nn.ReLU() )
-        self.attention.add_module("attConv3_di",nn.Conv2d(in_channels=self.features,
-        out_channels=self.features, kernel_size=3,dilation=dilation_val))
-        '''
+        #self.attention.add_module("attDown",nn.Conv2d(self.features,self.features,kernel_size=2,stride=16))
         self.attention.add_module("Spatial_BAM",BAM(self.features))
     
     def forward(self,weights,bottleneck):
+        weights = self.downsample(weights)
         weight_list = []
         for i in range(self.features):
             weight_list.append(weights)
         weights = torch.stack(weight_list,dim=1)
         weights = torch.reshape(weights,self.shape)
-        weights = weights.to("mps")
-        attention = self.attention(weights)
-        new_bottleneck = attention * bottleneck
+        
+        weights = weights.to("cuda")
+        #attention = self.attention(weights)
+        new_bottleneck = weights * bottleneck
         return new_bottleneck
 
 
