@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
-from networks import *
+from networks import UNet,NestedUNet,AttU_Net
+from R2Unet import R2U_Net
 from auxillary_net import auxnet
 from loss import Loss, Distill 
 import numpy as np
@@ -10,20 +11,23 @@ from utils import*
 
 class ModelWraper:
     def __init__(self,conf):
-        self.device = torch.device(conf.device)
-        self.seg_model = UNet(in_channels=conf.input_channels,out_channels= conf.output_channels)
-        self.seg_model.to(self.device)
         self.conf=conf
+        self.device = torch.device(conf.device)
+        if self.conf.network_type == "Unet":
+            self.seg_model = UNet(in_channels=conf.input_channels,out_channels= conf.output_channels)
+        elif self.conf.network_type == "Unet++":
+            self.seg_model = NestedUNet(input_channels=conf.input_channels,num_classes=conf.output_channels)
+        elif self.conf.network_type == "Att_Unet":
+            self.seg_model = AttU_Net(input_channels=conf.input_channels,num_classes=conf.output_channels)
+        elif self.conf.network_type == "R2Unet":
+            self.seg_model = R2U_Net(img_ch=conf.input_channels,output_ch=conf.output_channels,t=2)
+
+        self.seg_model.to(self.device)
         self.weights = None
         self.optimizer1 = optim.Adam(self.seg_model.parameters(), lr=conf.lr)
         self.loss_function = Loss(conf)
        
         if conf.isprob =='yes':
-            #self.a_model = Decoder(conf.output_channels,"Noise")
-            #self.a_model = self.a_model.to(device=self.device)
-            #y = self.a_model(torch.randn((1,1,2,256,256)))
-            #self.optimizer1 = optim.SGD(self.seg_model.parameters(), lr=conf.lr,momentum=0.09)
-            #self.optimizer2 = optim.SGD(self.a_model.parameters(), lr=conf.lr,momentum=0.09)
             self.distill_loss = Distill(self.conf.device)
             self.distill_loss= self.distill_loss.to(self.conf.device)
         
@@ -49,34 +53,41 @@ class ModelWraper:
             #mask_sub = mask_sub/mask_sub.max()
             subs[mask_inter==1] = i
             subs[mask_union==1] = i
-        #import pdb 
-        #pdb.set_trace()
+
         ### Probability over channels
         pw = torch.softmax(self.conf.pred,dim=1).detach().cpu()
         pw_a = torch.softmax(self.conf.pred_a,dim=1).detach().cpu()
-        ### Probability over pixels (dosnt work)
-        #b,c = self.conf.pred.size(0),self.conf.pred.size(1)
-        #pw = torch.softmax(self.conf.pred.reshape(b,c,-1),2).view_as(self.conf.pred).detach().cpu()
-        #pw_a = torch.softmax(self.conf.pred_a.reshape(b,c,-1),2).view_as(self.conf.pred_a).detach().cpu()
+     
+        #import pdb
+        #pdb.set_trace()
         pw = torch.max(pw,dim=1).values
         pw_a = torch.max(pw_a,dim=1).values
-        all_max = torch.max(torch.concat([pw,pw_a],dim=0),dim=0).values
-        idx = torch.where(subs>0)
-        weights[idx[0],idx[1]] = all_max[idx[0],idx[1]] 
-        return weights[None,None,:,:],subs[None,None,:,:]
+        
+        if self.conf.iter % 100==0:
+            #visualize_mask(pw[None,:,:,:],'pw',self.conf.debug_path,self.conf.iter)
+            #visualize_mask(pw_a[None,:,:,:],'pw_a',self.conf.debug_path,self.conf.iter)
+            visualize(mask_union[None,None,:,:],'union',self.conf.debug_path,self.conf.iter)
+            visualize(mask_inter[None,None,:,:],'inter',self.conf.debug_path,self.conf.iter)
+
+        weights = (pw + pw_a)
+        weights = weights/weights.max()
+        #all_max = torch.max(torch.concat([pw,pw_a],dim=0),dim=0).values
+        #idx = torch.where(subs>0)
+        #weights[idx[0],idx[1]] = all_max[idx[0],idx[1]] 
+        return weights[None,:,:,:],subs[None,None,:,:]
 
     def update_models(self,input,iter):
         self.conf.iter = iter
         self.conf = self.loss_function.setup_input(input)
         self.optimizer1.zero_grad()
-
+        
         if self.weights is None:
             self.conf.pred,self.conf.pred_a = self.seg_model(self.conf.input)
         else:
             self.conf.pred,self.conf.pred_a = self.seg_model(self.conf.input,self.weights)
         
         main_loss = self.loss_function(self.conf,isAux=False)
-
+        
         if self.conf.isprob == 'yes': #and self.conf.curr_epoch>0:
             aux_loss = self.loss_function(self.conf,isAux=True)
             aux_loss2 = Variable(self.distill_loss(self.conf.pred_a,self.conf.pred.detach()),requires_grad=True)
@@ -92,7 +103,8 @@ class ModelWraper:
             visualize(self.conf.pred,'seg',self.conf.debug_path,self.conf.iter)
             visualize(self.conf.pred_a,'aux',self.conf.debug_path,self.conf.iter)
             if self.conf.isprob =='yes':
-                visualize(self.weights,'subs',self.conf.debug_path,self.conf.iter)
+                visualize_mask(self.weights,'weight',self.conf.debug_path,self.conf.iter)
+                visualize(subs,'subs',self.conf.debug_path,self.conf.iter)
         
         return main_loss,aux_loss
     

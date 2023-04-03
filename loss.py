@@ -73,13 +73,20 @@ class Loss():
             loss_fn.to(self.conf.device)
             loss = loss_fn(pred,gt,self.conf.input)
             return loss
-        '''    
-        elif self.conf.isuncertainty and isinstance(self.conf.loss,str):
-            loss_fn = self.loss_pool["Distill"]
+        elif self.conf.loss == "CE_wreg":
+            loss_fn = self.loss_pool["CrossEntropy"]
             loss_fn.to(self.conf.device)
-            loss = loss_fn(self.conf.pred, torch.squeeze(self.conf.gt,dim=1))
+            loss_fn2 = self.loss_pool["Wreg"]
+            loss_fn2.to(self.conf.device)
+            loss = loss_fn(pred, torch.squeeze(gt,dim=1))+loss_fn2(pred,gt,self.conf.input)
             return loss
-        '''
+        elif self.conf.loss == "CE_wreg_mat":
+            loss_fn = self.loss_pool["CrossEntropy"]
+            loss_fn.to(self.conf.device)
+            loss_fn2 = self.loss_pool["Wreg_mat"]
+            loss_fn2.to(self.conf.device)
+            loss = loss_fn(pred, torch.squeeze(gt,dim=1))+loss_fn2(pred,gt,self.conf.input)
+            return loss
 
 class DiceVal(nn.Module):
 
@@ -188,7 +195,7 @@ class WassersteinCT(nn.Module):
         dice_stage1 = 0.0
         organ_mask = organ_mask.to(self.device)
         seg_mask = seg_mask.to(self.device)
-        ct_tile = torch.tile(ct,(1,5,1,1))
+        ct_tile = torch.tile(ct,(1,organ_mask.size(1),1,1))
         loss = torch.mean(torch.abs(organ_mask*ct_tile - seg_mask*ct_tile))
         return loss
 

@@ -32,12 +32,13 @@ class OrganSegmentationDataset(Dataset):
     if(subset == "train"):
       for filePath in sorted(filesPath):
         patient_id = int(filePath.split("/")[-1].split("_")[1])
-        if patient_id <= self.traning_patient:
-          if patient_id not in self.patient_ids:
-            self.patient_ids.append(patient_id)
-          self.data_paths.append(filePath)
-          self.data_paths = sorted(self.data_paths)
-    
+        #if patient_id <= self.traning_patient:
+        #  if patient_id not in self.patient_ids:
+        self.patient_ids.append(patient_id)
+        self.data_paths.append(filePath)
+        self.data_paths = sorted(self.data_paths)
+      self.patient_ids = np.unique(np.array(self.patient_ids))
+      
     elif (subset == "test"):
       ids = [os.path.basename(x).split('.')[0].split('_')[1] for x in filesPath]
       ids = np.unique(np.array(ids))
@@ -61,12 +62,11 @@ class OrganSegmentationDataset(Dataset):
     print(self.patient_ids)
   
   def normalize_data(self,data):
-    data[data< -150]=-150
-    data[data>200]= 200 #1524
-    
-    data=data +150
-    
-    data=(data*2.)/200 - 1 #1500 - 1
+    #data[data< -150]=-150
+    #data[data>200]= 200 #1524
+    #data=data +150
+    #data=(data*2.)/200 - 1 #1500 - 1
+    data = data /data.max()
     return  (data)
   
   def __len__(self):

@@ -22,14 +22,14 @@ def tensor2im(input_image, imtype=np.uint8):
     return image_numpy.astype(imtype)
 
 def visualize(out, model_type,path,iter):
-        if model_type !='subs':
+        if model_type =='seg' or model_type=='aux':
             out = torch.argmax(out,dim=1).cpu()
         
         class_to_color = [torch.tensor([0, 0, 0]),torch.tensor([10, 133, 1]), torch.tensor([14, 1, 133]),  torch.tensor([33, 255, 1]), torch.tensor([243, 5, 247])]
         output = torch.zeros(1, 3, out.size(-2), out.size(-1), dtype=torch.float)
         for class_idx, color in enumerate(class_to_color):
             mask = out == class_idx
-            if model_type!='subs':
+            if model_type =='seg' or model_type=='aux':
                 mask = mask.unsqueeze(1) # should have shape 1, 1, 100, 100
             curr_color = color.reshape(1, 3, 1, 1)
             segment = mask*curr_color # should have shape 1, 3, 100, 100
@@ -37,3 +37,11 @@ def visualize(out, model_type,path,iter):
         output = tensor2im(output)
         Image.fromarray(output).save(f"{path}/pred_{model_type}_{iter}.png")
         #torchvision.utils.save_image(output, f"{self.conf.debug_path}/pred_{model_type}_{self.conf.iter}.png")
+def visualize_mask(out,ftype,path,iter):
+    #output = tensor2im(out)
+    import matplotlib.pyplot as plt
+    cm = plt.get_cmap('jet')
+    colored_image = cm(out)
+    if len(colored_image.shape)>3:
+        colored_image = np.squeeze(colored_image)
+    Image.fromarray((colored_image[:, :, :3] * 255).astype(np.uint8)).save(f"{path}/pred_{ftype}_{iter}.png")

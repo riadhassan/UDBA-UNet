@@ -38,13 +38,13 @@ def get_prev_traning_data():
 
 def conf():
     args = argparse.ArgumentParser()
-    args.add_argument("--data_root",type=str,default="/home/nazib/Medical/Data")
+    args.add_argument("--data_root",type=str,default="/home/nazib/Medical/Data/Dataset_LCTSC")
     args.add_argument("--input_channels",type=int,default=1)
     args.add_argument("--output_channels",type=int,default=5)
-    args.add_argument("--lr",type=float,default=0.01)
+    args.add_argument("--lr",type=float,default=0.001)
     args.add_argument("--batch_size",type=int,default=1)
     args.add_argument("--save_dir",type=str,default="/home/nazib/Medical/train_logs")
-    args.add_argument("--model_name",type=str,default="Pure_Wreg_mat")
+    args.add_argument("--model_name",type=str,default="test2")
     args.add_argument("--printfq",type=int,default=10)
     args.add_argument("--writerfq",type=int,default=10)
     args.add_argument("--model_save_fq",type=bool,default=True)
@@ -56,6 +56,7 @@ def conf():
     args.add_argument("--imsize",type=int,default=256)
     args.add_argument("--isprob",type=str,default='yes',help="Will calculate uncertainty")
     args.add_argument("--aux_file",type=str,default="res_50")
+    args.add_argument("--network_type",type=str,default="Unet")
     args = args.parse_args()
     
     return args
@@ -86,10 +87,11 @@ def run_on_slices(model,data,conf):
       mask = mat['mask']
       image = mat['img']
       mask = mask[None,:,:]
-      image[image<-150] = -150
-      image[image>200] =200
-      image = image + 150
-      image = (2*image)/200 -1 
+      #image[image<-150] = -150
+      #image[image>200] =200
+      #image = image + 150
+      #image = (2*image)/200 -1
+      image = image/image.max() 
       #image = (image - np.std(image))/np.mean(image)
       image = torch.from_numpy(image[None,None,:,:].astype(np.float32))
       image = image.to(conf.device)
@@ -126,7 +128,7 @@ def main(conf):
     '''
     all_dice_dict = []
     all_hd_dict =[]
-
+    
     ###### Training #######
     total_iter = 0
     for epoch in tqdm(range(conf.done_epoch, conf.num_epoch+1)):
@@ -149,27 +151,30 @@ def main(conf):
       wraper.set_mood(False)
       all_dice = []
       all_hd =[]
-      
+      all_iou =[]
       with torch.no_grad():
         for i, data in enumerate(val_loader):
           vdata,patient = data
           img_vol,gt,seg,affine_mat = run_on_slices(wraper.seg_model,vdata,conf)
-          dice,hd = evaluate.evaluate_case(seg,gt,evaluate.get_Organ_regions())
+          dice,hd,iou = evaluate.evaluate_case(seg,gt,evaluate.get_Organ_regions())
           all_dice.append(dice)
           all_hd.append(hd)
+          all_iou.append(iou)
           if conf.debug_type == "nifti":
             save_validation_nifti(img_vol,gt,seg,debug_path,patient,affine_mat)
       
       organ_dice = np.mean(all_dice,0) 
       organ_hd = np.mean(all_hd,0)
-      dice_dict = {"Esophegus Dice":organ_dice[0],"Heart Dice":organ_dice[1],"Trachea Dice":organ_dice[2],"Aorta Dice":organ_dice[3]}
-      hd_dict = {"Esophegus HD":organ_hd[0],"Heart HD":organ_hd[1],"Trachea HD":organ_hd[2],"Aorta HD":organ_hd[3]}
+      organ_iou = np.mean(all_iou,0)
+      dice_dict,hd_dict = evaluate.print_Thoracic(organ_dice,organ_hd)
+           
       print(dice_dict)
       print(hd_dict)
       all_dice_dict.append(dice_dict)
       all_hd_dict.append(hd_dict)
       pd.DataFrame.from_dict(all_dice_dict).to_csv(os.path.join(model_path,"Validation_dice.csv"))
-      pd.DataFrame.from_dict(all_hd_dict).to_csv(os.path.join(model_path,"Validation_hd.csv"))
+      pd.DataFrame.from_dict(all_hd_dict).to_csv(os.path.join(model_path,"Validation_asd.csv"))
+      #pd.DataFrame.from_dict(all_iou_dict).to_csv(os.path.join(model_path,"Validation_iou.csv"))
       
       ### Saving the best model ###
       if epoch<1:
