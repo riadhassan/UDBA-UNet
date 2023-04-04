@@ -13,6 +13,10 @@ export CUDA_VISIBLE_DEVICES=0
 source /home/nazib/miniconda3/etc/profile.d/conda.sh
 conda activate medical
 cd ~/Medical/MIDL_code
+<<<<<<< HEAD
 python train.py --model_name LCTSC_R2Unet_Dice --loss Dice --isprob no --network_type R2Unet --data_root /home/nazib/Medical/Data/Dataset_LCTSC --output_channels 6 
 #python train.py --model_name Dense_CE --loss CrossEntropy --isprob yes --output_channels 5
 #python train.py --model_name LCTSC_CrossEntropy_attn_raw --loss CrossEntropy --isprob yes --output_channels 6
+=======
+python train.py --model_name CrossEntropy_attn_raw --loss CrossEntropy --isprob yes
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff

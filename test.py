@@ -16,10 +16,17 @@ from train import run_on_slices, save_validation_nifti
 
 def conf():
     args = argparse.ArgumentParser()
+<<<<<<< HEAD
     args.add_argument("--data_root",type=str,default="/home/nazib/Medical/Data/Dataset_LCTSC")
     args.add_argument("--model_path",type=str,default="/home/nazib/Medical/train_logs/LCTSC_R2Unet_Dice/LCTSC_R2Unet_Dice_epoch_0.pth")
     args.add_argument("--input_channels",type=int,default=1)
     args.add_argument("--output_channels",type=int,default=6)
+=======
+    args.add_argument("--data_root",type=str,default="/home/nazib/Medical/Data")
+    args.add_argument("--model_path",type=str,default="/home/nazib/Medical/train_logs/Wreg_mat_attn_raw/Wreg_mat_attn_raw_epoch_182.pth")
+    args.add_argument("--input_channels",type=int,default=1)
+    args.add_argument("--output_channels",type=int,default=5)
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
     args.add_argument("--lr",type=float,default=0.01)
     args.add_argument("--batch_size",type=int,default=1)
     #args.add_argument("--save_dir",type=str,default="/home/nazib/Medical/train_logs")
@@ -35,7 +42,10 @@ def conf():
     args.add_argument("--imsize",type=int,default=256)
     args.add_argument("--isprob",type=str,default='yes',help="Will calculate uncertainty")
     #args.add_argument("--aux_file",type=str,default="res_50")
+<<<<<<< HEAD
     args.add_argument("--network_type",type=str,default="R2Unet")
+=======
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
     args = args.parse_args()
     
     return args
@@ -47,6 +57,7 @@ def test_model(conf):
     os.mkdir(save_dir)
 
   wraper = ModelWraper(conf)
+<<<<<<< HEAD
   if conf.device == "cpu":
     wraper.seg_model.load_state_dict(torch.load(conf.model_path,map_location=torch.device('cpu'))['model_state_dict'])
   else:   
@@ -59,10 +70,18 @@ def test_model(conf):
   all_dice = []
   all_hd =[]
   all_iou = []
+=======
+  wraper.seg_model.load_state_dict(torch.load(conf.model_path)['model_state_dict'])
+  _, val_loader = data_loaders(conf.data_root)
+  all_dice = []
+  all_hd =[]
+
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
   with torch.no_grad():
       for i, data in enumerate(val_loader):
         vdata,patient = data
         img_vol,gt,seg,affine_mat = run_on_slices(wraper.seg_model,vdata,conf)
+<<<<<<< HEAD
         #import pdb
         #pdb.set_trace()
         if "LCTSC" in conf.data_root:
@@ -72,11 +91,19 @@ def test_model(conf):
         all_dice.append(dice)
         all_hd.append(hd)
         all_iou.append(iou)
+=======
+        dice,hd = evaluate.evaluate_case(seg,gt,evaluate.get_Organ_regions())
+        all_dice.append(dice)
+        all_hd.append(hd)
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
         save_validation_nifti(img_vol,gt,seg,save_dir,patient,affine_mat)
     
       pd.DataFrame.from_dict(all_dice).to_csv(os.path.join(save_dir,"test_dice.csv"))
       pd.DataFrame.from_dict(all_hd).to_csv(os.path.join(save_dir,"test_hd.csv"))
+<<<<<<< HEAD
       pd.DataFrame.from_dict(all_iou).to_csv(os.path.join(save_dir,"test_iou.csv"))
+=======
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
 
 if __name__=="__main__":
   test_model(conf())

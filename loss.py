@@ -70,6 +70,15 @@ class Loss():
             return loss
         elif self.conf.loss == "DiceCT":
             loss_fn = self.loss_pool["DiceCT"]
+<<<<<<< HEAD
+=======
+            loss_fn.to(self.conf.device)
+            loss = loss_fn(pred,gt,self.conf.input)
+            return loss
+        '''    
+        elif self.conf.isuncertainty and isinstance(self.conf.loss,str):
+            loss_fn = self.loss_pool["Distill"]
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
             loss_fn.to(self.conf.device)
             loss = loss_fn(pred,gt,self.conf.input)
             return loss

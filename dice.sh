@@ -13,5 +13,9 @@ export CUDA_VISIBLE_DEVICES=0
 source /home/nazib/miniconda3/etc/profile.d/conda.sh
 conda activate medical
 cd ~/Medical/MIDL_code
+<<<<<<< HEAD
 #python train.py --model_name Dense_Dice --loss Dice --isprob yes --output_channels 5
 python train.py --model_name R2Unet_Dice --loss Dice --isprob no --network_type R2Unet --data_root /home/nazib/Medical/Data --output_channels 5 
+=======
+python train.py --model_name Dice_attn_raw --loss Dice --isprob yes 
+>>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
