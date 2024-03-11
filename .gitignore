@@ -1,5 +1,5 @@
 /configs
-
+/__pycache__
 # Created by https://www.toptal.com/developers/gitignore/api/python,venv,pycharm+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,venv,pycharm+all
 
