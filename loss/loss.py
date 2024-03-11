@@ -52,16 +52,14 @@ class Loss():
             loss_fn1.to(self.conf.device)
             loss_fn2 = self.loss_pool["Wreg"]
             loss_fn2.to(self.conf.device)
-            loss = loss_fn1(pred,gt) 
-            + loss_fn2(pred,gt,self.conf.input)
+            loss = loss_fn1(pred,gt) + loss_fn2(pred,gt,self.conf.input)
             return loss
         elif self.conf.loss == "Wreg_mat":
             loss_fn1 = self.loss_pool["Dice"]
             loss_fn1.to(self.conf.device)
             loss_fn2 = self.loss_pool["Wreg_mat"]
             loss_fn2.to(self.conf.device)
-            loss = loss_fn1(pred,gt) 
-            + loss_fn2(pred,gt,self.conf.input)
+            loss = loss_fn1(pred,gt) + loss_fn2(pred,gt,self.conf.input)
             return loss
         elif self.conf.loss == "CrossEntropy":
             loss_fn = self.loss_pool["CrossEntropy"]
@@ -70,18 +68,16 @@ class Loss():
             return loss
         elif self.conf.loss == "DiceCT":
             loss_fn = self.loss_pool["DiceCT"]
-<<<<<<< HEAD
-=======
             loss_fn.to(self.conf.device)
             loss = loss_fn(pred,gt,self.conf.input)
             return loss
-        '''    
+
         elif self.conf.isuncertainty and isinstance(self.conf.loss,str):
             loss_fn = self.loss_pool["Distill"]
->>>>>>> 0f89cc4d9dfdf404c172d3c74c0863ab2e3437ff
             loss_fn.to(self.conf.device)
             loss = loss_fn(pred,gt,self.conf.input)
             return loss
+
         elif self.conf.loss == "CE_wreg":
             loss_fn = self.loss_pool["CrossEntropy"]
             loss_fn.to(self.conf.device)

@@ -1,17 +1,16 @@
 import numpy as np
 import torch
 import argparse
-import torch.nn as nn
-from data_loader import*
+from dataloder.data_loader import*
 from tqdm import tqdm
 import glob
 from torch.utils.tensorboard import SummaryWriter
 from scipy.io import loadmat
-import evaluate
+from metrics import evaluate
 import nibabel as nib
 import pandas as pd
 import os
-from wraper import ModelWraper
+from utils.wraper import ModelWraper
 
 def save_validation_nifti(img,gt,seg,path,patient,affine):
   new_img = nib.Nifti1Image(img,affine)
@@ -156,7 +155,7 @@ def main(conf):
         for i, data in enumerate(val_loader):
           vdata,patient = data
           img_vol,gt,seg,affine_mat = run_on_slices(wraper.seg_model,vdata,conf)
-          dice,hd,iou = evaluate.evaluate_case(seg,gt,evaluate.get_Organ_regions())
+          dice,hd,iou = evaluate.evaluate_case(seg, gt, evaluate.get_Organ_regions())
           all_dice.append(dice)
           all_hd.append(hd)
           all_iou.append(iou)
@@ -166,7 +165,7 @@ def main(conf):
       organ_dice = np.mean(all_dice,0) 
       organ_hd = np.mean(all_hd,0)
       organ_iou = np.mean(all_iou,0)
-      dice_dict,hd_dict = evaluate.print_Thoracic(organ_dice,organ_hd)
+      dice_dict,hd_dict = evaluate.print_Thoracic(organ_dice, organ_hd)
            
       print(dice_dict)
       print(hd_dict)

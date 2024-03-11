@@ -1,13 +1,10 @@
 import torch
 import torch.optim as optim
-from networks import UNet,NestedUNet,AttU_Net
-from R2Unet import R2U_Net
-from auxillary_net import auxnet
-from loss import Loss, Distill 
-import numpy as np
-import torchvision
+from networks.networks import UNet,NestedUNet,AttU_Net
+from networks.R2Unet import R2U_Net
+from loss.loss import Loss, Distill
 from torch.autograd import Variable
-from utils import*
+from utils.utils import*
 
 class ModelWraper:
     def __init__(self,conf):

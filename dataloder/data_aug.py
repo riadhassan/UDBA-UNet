@@ -14,7 +14,7 @@ from keras.preprocessing.image import ImageDataGenerator
 #from scipy.ndimage import rotate, map_coordinates, gaussian_filter
 
 _dir = os.path.join(os.path.realpath(os.path.dirname(__file__)), '')
-data_path = os.path.join(_dir, '../')
+data_path = os.path.join(_dir, '../../')
 aug_data_path = os.path.join(_dir, 'aug_data')
 
 def random_zoom(x, y, zoom_range, row_index=1, col_index=2, channel_index=0,
